@@ -36,12 +36,15 @@ def polyMul(p1,p2,n):
             result[(i+j)%r]%=n;
     return result;
 
-def polypow(a,m,r): # calculates (x+a)**n %(n,x**r-1)
-    result = [0]*r;
+def polypow(a,n,r,m): # calculates (x+a)**n %(n,x**r-1)
+    x = [0]*r;
+    result=[0]*r;
+    x[0]=a;    
+    x[1]=1;
     result[0]=1;
-    result[1]=1;
-    x=result;
-    n=m;
+
+    
+
     while n > 0 :
         if n%2== 1 :
             result=polyMul(result,x,m);
@@ -50,14 +53,14 @@ def polypow(a,m,r): # calculates (x+a)**n %(n,x**r-1)
     return result; 
 
 def checkWitness(a,n,r): 
-    LHS=polypow(a,n,r);
+    LHS=polypow(a,n,r,n);
     RHS = [0]*r;
     RHS[0]=a;
     RHS[n%r]=1;
     for i in range(r):
         if LHS[i]!=RHS[i] :
-             return False;
-    return True;
+             return True;
+    return False;
 
 
 def aks(n):
@@ -68,11 +71,12 @@ def aks(n):
         return False;
 
     r=findR(n);
+
     if r==False :
         return False
     if r==n :# step 2
         return True;
-
+    
     end=min(2*math.ceil(math.sqrt(r))*(n.bit_length()+1),n);
     for a in range(1,end) :
         if math.gcd(a,n)>1 :
@@ -83,8 +87,7 @@ def aks(n):
 
 
 
-
-for i in range(1,10000):
+for i in range(31,10000):
     withAks=aks(i);
     withSympy=isprime(i);
     if i%100==0 :
