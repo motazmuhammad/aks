@@ -4,6 +4,7 @@
 from sympy import perfect_power
 from sympy.ntheory import isprime
 import math
+import time
 def checkRCandidate(r,n):
     for i in range(1,4*n.bit_length()+2):
         if pow(n,i,r)==1 :
@@ -36,6 +37,22 @@ def polyMul(p1,p2,n):
             result[(i+j)%r]%=n;
     return result;
 
+def polypowFast(a,n,r,m): # calculates (x+a)**n %(n,x**r-1)
+    w=math.exp(2*math.pi*1/r);
+    result=[0]*r;
+    coef=[0]*r;
+    for i in range(r):
+        coef[i]=(a+w**i)**n;
+    result[0]=sum(coef);
+    for i in range(1,r):
+        result[i]=result[i-1]*(w**-1);
+    
+    for i in range(r):
+        result[i]=int(result[i]);
+        result[i]%=m;
+    return result;
+    
+
 def polypow(a,n,r,m): # calculates (x+a)**n %(n,x**r-1)
     x = [0]*r;
     result=[0]*r;
@@ -61,6 +78,16 @@ def checkWitness(a,n,r):
         if LHS[i]!=RHS[i] :
              return True;
     return False;
+def checkWitnessFast(a,n,r): 
+    LHS=polypowFast(a,n,r,n);
+    RHS = [0]*r;
+    RHS[0]=a;
+    RHS[n%r]=1;
+    for i in range(r):
+        if LHS[i]!=RHS[i] :
+             return True;
+    return False;
+
 
 
 def aks(n):
@@ -84,13 +111,45 @@ def aks(n):
         if checkWitness(a,n,r) :
             return False
     return True;
+def aksFast(n):
+    if n==1 :
+         return False;# step 0
+
+    if( isPerfectPower(n)) :# step 1
+        return False;
+
+    r=findR(n);
+
+    if r==False :
+        return False
+    if r==n :# step 2
+        return True;
+    
+    end=min(2*math.ceil(math.sqrt(r))*(n.bit_length()+1),n);
+    for a in range(1,end) :
+        if math.gcd(a,n)>1 :
+            return False
+        if checkWitnessFast(a,n,r) :
+            return False
+    return True;
 
 
-
-for i in range(31,10000):
+start_time = time.time()
+for i in range(1,100):
     withAks=aks(i);
-    withSympy=isprime(i);
+#    withSympy=isprime(i);
     if i%100==0 :
         print(i)
-    if withAks!=withSympy:
-        print('come on something is wrong')
+   # if withAks!=withSympy:
+   #     print('come on something is wrong')
+print("--- %s seconds ---" % (time.time() - start_time))
+
+start_time = time.time()
+for i in range(1,100):
+    withAks=aksFast(i);
+#    withSympy=isprime(i);
+    if i%100==0 :
+        print(i)
+ #   if withAks!=withSympy:
+  #      print('come on something is wrong')
+print("Fast--- %s seconds ---" % (time.time() - start_time))
