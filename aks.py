@@ -6,7 +6,7 @@ from sympy.ntheory import isprime
 import math
 def checkRCandidate(r,n):
     for i in range(1,4*n.bit_length()+2):
-        if math.pow(n,i,r)==1 :
+        if pow(n,i,r)==1 :
              return False;
     return True;
 def findR(n):# step 2
@@ -18,12 +18,47 @@ def findR(n):# step 2
             if checkRCandidate(r,n) :
                 return r;
         r=r+1;
-    return 0;
+    return r;
 
 def isPerfectPower(n):
     if perfect_power(n)==False :
         return False;
     return True;
+
+def polyMul(p1,p2,n):
+    r=len(p1);
+    if len(p1) != len(p2):
+        return False;
+    result = [0]*r;
+    for i in range(r):
+        for j in range(r):
+            result[(i+j)%r]+=p1[i]*p2[j];
+            result[(i+j)%r]%=n;
+    return result;
+
+def polypow(a,m,r): # calculates (x+a)**n %(n,x**r-1)
+    result = [0]*r;
+    result[0]=1;
+    result[1]=1;
+    x=result;
+    n=m;
+    while n > 0 :
+        if n%2== 1 :
+            result=polyMul(result,x,m);
+        n = n//2;  
+        x = polyMul(x,x,m);
+    return result; 
+
+def checkWitness(a,n,r): 
+    LHS=polypow(a,n,r);
+    RHS = [0]*r;
+    RHS[0]=a;
+    RHS[n%r]=1;
+    for i in range(r):
+        if LHS[i]!=RHS[i] :
+             return False;
+    return True;
+
 
 def aks(n):
     if n==1 :
@@ -33,17 +68,26 @@ def aks(n):
         return False;
 
     r=findR(n);
+    if r==False :
+        return False
     if r==n :# step 2
         return True;
-        
-    end=2*ceil(sqrt(r))*(n.bit_length()+1);
+
+    end=min(2*math.ceil(math.sqrt(r))*(n.bit_length()+1),n);
     for a in range(1,end) :
         if math.gcd(a,n)>1 :
             return False
-        if checkWitness(a) :
+        if checkWitness(a,n,r) :
             return False
     return True;
 
 
-n = int(input());
-print(aks(n));
+
+
+for i in range(1,10000):
+    withAks=aks(i);
+    withSympy=isprime(i);
+    if i%100==0 :
+        print(i)
+    if withAks!=withSympy:
+        print('come on something is wrong')
