@@ -6,15 +6,18 @@ from sympy.ntheory import isprime
 import math
 import time
 import copy
-from sympy import fft, ifft
+#from sympy import fft, ifft
 from sympy import convolution
 from sympy import re
 from sympy.discrete.convolutions import convolution_fft
 from sympy.discrete.convolutions import convolution_ntt
+import copy
 # f
 
-def fft( a,  invert=False) :
-    n = len(a);
+def fft( b,  invert=False) :
+    a=[0]*len(b);
+    a[0:len(b)]=b;
+    n=len(a);
     if (n == 1):
         return a;
     a0=[0]*(n//2);
@@ -26,16 +29,16 @@ def fft( a,  invert=False) :
     a0=fft(a0, invert);
     a1=fft(a1, invert);
     factor=[-1,1];
-    ang = 2 * math.pi // n * factor[int(invert)];
+    ang = (2 * math.pi / n) * factor[int(invert)];
     w=1;
-    wn(cos(ang)+1j* sin(ang));
+    wn=math.cos(ang)+1j* math.sin(ang);
 
-    for i in range(n//2) 
+    for i in range(n//2) :
         a[i] = a0[i] + w * a1[i];
-        a[i + n/2] = a0[i] - w * a1[i];
+        a[i + n//2] = a0[i] - w * a1[i];
         if (invert) :
             a[i] /= 2;
-            a[i + n/2] /= 2;
+            a[i + n//2] /= 2;
         
         w *= wn;
     return a;
@@ -72,13 +75,33 @@ def polyMul(p1,p2,n):
             result[(i+j)%r]+=p1[i]*p2[j];
             result[(i+j)%r]%=n;
     return result;
+# def polyMulFast(p1,p2,n):
+#     res=convolution_ntt(p1,p2,prime=5*2**75 + 1);
+#     result=[0]*len(p1);
+#     for i in range(len(res)):
+#         result[i%len(p1)]+=int(res[i]);
+#         result[i%len(p1)]%=n;
+#     return result;
+
 def polyMulFast(p1,p2,n):
-    res=convolution_ntt(p1,p2,prime=5*2**75 + 1);
-    result=[0]*len(p1);
-    for i in range(len(res)):
-        result[i%len(p1)]+=int(res[i]);
-        result[i%len(p1)]%=n;
-    return result;
+    r=len(p1);
+    m=2**(r.bit_length());
+    p1F=[0]*m;
+    p2F=[0]*m;
+    p1F[0:len(p1)]=p1;
+    p2F[0:len(p1)]=p2;
+    p1F=fft(p1F);
+    p2F=fft(p2F);
+    result=[0]*m;
+    for i in range(m):
+        result[i]=p1F[i]*p2F[i];
+    result=fft(result,True);
+    res=[0]*r;
+    for i in range(len(result)):
+        res[i%len(p1)]+=int(round(result[i].real));
+        res[i%len(p1)]%=n;
+    #res[i%len(p1)]%=n;
+    return res;
 
 def polypow(a,n,r,m,fast=False): # calculates (x+a)**n %(n,x**r-1)
     x = [0]*r;
@@ -114,7 +137,7 @@ def aks(n,fast=False):
     if n==1 :
          return False;# step 0
 
-    if( isPerfectPower(n)) :# step 1
+    if( isPerfectPower(n)==False) :# step 1
         return False;
 
     r=findR(n);
@@ -124,8 +147,8 @@ def aks(n,fast=False):
     if r==n :# step 2
         return True;
     
-    end=min(2*math.ceil(math.sqrt(r))*(n.bit_length()+1),n);
-    for a in range(28,end) :
+    end=min(math.ceil(math.sqrt(r))*(n.bit_length()+1),n);
+    for a in range(1,end) :
         if math.gcd(a,n)>1 :
             return False
         if checkWitness(a,n,r,fast) :
@@ -151,7 +174,7 @@ end=100
 # print("--- %s seconds ---" % (time.time() - start_time))
 
 start_time = time.time()
-for i in range(1,end):
+for i in range(37,end):
     withAks=aks(i,True);
     withSympy=isprime(i);
     if i%100==0 :
