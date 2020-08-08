@@ -5,6 +5,42 @@ from sympy import perfect_power
 from sympy.ntheory import isprime
 import math
 import time
+import copy
+from sympy import fft, ifft
+from sympy import convolution
+from sympy import re
+from sympy.discrete.convolutions import convolution_fft
+from sympy.discrete.convolutions import convolution_ntt
+# f
+
+def fft( a,  invert=False) :
+    n = len(a);
+    if (n == 1):
+        return a;
+    a0=[0]*(n//2);
+    a1=[0]*(n//2);
+    for i in range(n//2) :
+        a0[i] = a[2*i];
+        a1[i] = a[2*i+1];
+    
+    a0=fft(a0, invert);
+    a1=fft(a1, invert);
+    factor=[-1,1];
+    ang = 2 * math.pi // n * factor[int(invert)];
+    w=1;
+    wn(cos(ang)+1j* sin(ang));
+
+    for i in range(n//2) 
+        a[i] = a0[i] + w * a1[i];
+        a[i + n/2] = a0[i] - w * a1[i];
+        if (invert) :
+            a[i] /= 2;
+            a[i + n/2] /= 2;
+        
+        w *= wn;
+    return a;
+    
+
 def checkRCandidate(r,n):
     for i in range(1,4*n.bit_length()+2):
         if pow(n,i,r)==1 :
@@ -36,50 +72,35 @@ def polyMul(p1,p2,n):
             result[(i+j)%r]+=p1[i]*p2[j];
             result[(i+j)%r]%=n;
     return result;
-
-def polypowFast(a,n,r,m): # calculates (x+a)**n %(n,x**r-1)
-    w=math.exp(2*math.pi*1/r);
-    result=[0]*r;
-    coef=[0]*r;
-    for i in range(r):
-        coef[i]=(a+w**i)**n;
-    result[0]=sum(coef);
-    for i in range(1,r):
-        result[i]=result[i-1]*(w**-1);
-    
-    for i in range(r):
-        result[i]=int(result[i]);
-        result[i]%=m;
+def polyMulFast(p1,p2,n):
+    res=convolution_ntt(p1,p2,prime=5*2**75 + 1);
+    result=[0]*len(p1);
+    for i in range(len(res)):
+        result[i%len(p1)]+=int(res[i]);
+        result[i%len(p1)]%=n;
     return result;
-    
 
-def polypow(a,n,r,m): # calculates (x+a)**n %(n,x**r-1)
+def polypow(a,n,r,m,fast=False): # calculates (x+a)**n %(n,x**r-1)
     x = [0]*r;
     result=[0]*r;
     x[0]=a;    
     x[1]=1;
     result[0]=1;
-
-    
-
     while n > 0 :
         if n%2== 1 :
-            result=polyMul(result,x,m);
-        n = n//2;  
-        x = polyMul(x,x,m);
+            if fast:
+                result=polyMulFast(result,x,m);
+            else :
+                result=polyMul(result,x,m);
+        n = n//2;
+        if fast:  
+            x = polyMulFast(x,x,m);
+        else:
+            x = polyMul(x,x,m);
     return result; 
 
-def checkWitness(a,n,r): 
-    LHS=polypow(a,n,r,n);
-    RHS = [0]*r;
-    RHS[0]=a;
-    RHS[n%r]=1;
-    for i in range(r):
-        if LHS[i]!=RHS[i] :
-             return True;
-    return False;
-def checkWitnessFast(a,n,r): 
-    LHS=polypowFast(a,n,r,n);
+def checkWitness(a,n,r,fast=False): 
+    LHS=polypow(a,n,r,n,fast);
     RHS = [0]*r;
     RHS[0]=a;
     RHS[n%r]=1;
@@ -89,8 +110,7 @@ def checkWitnessFast(a,n,r):
     return False;
 
 
-
-def aks(n):
+def aks(n,fast=False):
     if n==1 :
          return False;# step 0
 
@@ -105,51 +125,37 @@ def aks(n):
         return True;
     
     end=min(2*math.ceil(math.sqrt(r))*(n.bit_length()+1),n);
-    for a in range(1,end) :
+    for a in range(28,end) :
         if math.gcd(a,n)>1 :
             return False
-        if checkWitness(a,n,r) :
-            return False
-    return True;
-def aksFast(n):
-    if n==1 :
-         return False;# step 0
-
-    if( isPerfectPower(n)) :# step 1
-        return False;
-
-    r=findR(n);
-
-    if r==False :
-        return False
-    if r==n :# step 2
-        return True;
-    
-    end=min(2*math.ceil(math.sqrt(r))*(n.bit_length()+1),n);
-    for a in range(1,end) :
-        if math.gcd(a,n)>1 :
-            return False
-        if checkWitnessFast(a,n,r) :
+        if checkWitness(a,n,r,fast) :
             return False
     return True;
 
 
-start_time = time.time()
-for i in range(1,100):
-    withAks=aks(i);
-#    withSympy=isprime(i);
-    if i%100==0 :
-        print(i)
-   # if withAks!=withSympy:
-   #     print('come on something is wrong')
-print("--- %s seconds ---" % (time.time() - start_time))
+n=1;
+# while n>=1:
+#     n =int(input());
+#     a=1;
+#     r=int(input());
+#     print(polypow(a,n,r,100,True));
+end=100
+# start_time = time.time()
+# for i in range(1,end):
+#     withAks=aks(i);
+#     withSympy=isprime(i);
+#     if i%100==0 :
+#         print(i)
+#     if withAks!=withSympy:
+#         print('come on something is wrong slow')
+# print("--- %s seconds ---" % (time.time() - start_time))
 
 start_time = time.time()
-for i in range(1,100):
-    withAks=aksFast(i);
-#    withSympy=isprime(i);
+for i in range(1,end):
+    withAks=aks(i,True);
+    withSympy=isprime(i);
     if i%100==0 :
         print(i)
- #   if withAks!=withSympy:
-  #      print('come on something is wrong')
+    if withAks!=withSympy:
+        print('come on something is wrong Fast')
 print("Fast--- %s seconds ---" % (time.time() - start_time))
