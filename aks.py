@@ -13,38 +13,38 @@ import copy
 #from sympy import fft, ifft
 from sympy import convolution
 from sympy import re
-from sympy.discrete.convolutions import convolution_fft
-from sympy.discrete.convolutions import convolution_ntt
+#from sympy.discrete.convolutions import convolution_fft
+#from sympy.discrete.convolutions import convolution_ntt
 import copy
 import cProfile
 import re
 from mpmath import sin, cos
 # f
-mp.dps = 100
+mp.dps = 15
 def fft( b,  invert=False) :
-    a=[mp.mpc(0)]*len(b);
+    a=[0]*len(b);
     a[0:len(b)]=b;
     n=len(a);
     if (n == 1):
         return a;
-    a0=[mp.mpc(0)]*(n//2);
-    a1=[mp.mpc(0)]*(n//2);
+    a0=[0]*(n//2);
+    a1=[0]*(n//2);
     for i in range(n//2) :
-        a0[i] = mp.mpc(a[2*i]);
-        a1[i] = mp.mpc(a[2*i+1]);
+        a0[i] = a[2*i];
+        a1[i] = a[2*i+1];
     a0=fft(a0, invert);
     a1=fft(a1, invert);
     factor=[-1,1];
-    ang = (mp.mpf(2) * mp.pi / n) * factor[int(invert)];
-    w=mp.mpc(1);
-    wn=mp.exp(mp.mpc(real=0,imag=ang));
+    ang = (2 * mp.pi / n) * factor[int(invert)];
+    w=1;
+    wn=mp.cos(ang)+1j*mp.sin(ang);
     
     for i in range(n//2) :
         a[i] = a0[i] + w * a1[i];
         a[i + n//2] = a0[i] - w * a1[i];
         if (invert) :
-            a[i] /= mp.mpc(2);
-            a[i + n//2] /= mp.mpc(2);
+            a[i] /= 2;
+            a[i + n//2] /= 2;
         w *= wn;
 
     
@@ -104,21 +104,19 @@ def polyMul(p1,p2,n):
 
 def polyMulFast(p1,p2,n):
     r=len(p1);
-    m=2**(r.bit_length());
+    m=2**(r.bit_length()+1);
     p1F=[0]*m;
     p2F=[0]*m;
-    p1F[0:len(p1)]=[mp.mpc(x) for x in p1];
-    p2F[0:len(p1)]=[mp.mpc(x) for x in p2];
+    p1F[0:len(p1)]=p1
+    p2F[0:len(p1)]=p2
     p1F=fft(p1F);
     p2F=fft(p2F);
-    result=[0]*m;
-    for i in range(m):
-        result[i]=p1F[i]*p2F[i];
+    result=[p1F[i]*p2F[i] for i in range(len(p1F))];
     result=fft(result,True);
     res=[0]*r;
-    for i in range(len(result)):
+    for i in range(len(res)):
         res[i%r]+=int(round(result[i].real));
-       # res[i%r]%=n;
+        res[i%r]%=n;
     #res[i%len(p1)]%=n;
     return res;
 
@@ -176,11 +174,10 @@ def polypow(a,n,r,m,fast=False): # calculates (x+a)**n %(n,x**r-1)
 
 def checkWitness(a,n,r,fast=False): 
     LHS=polypow(a,n,r,n,fast);
-    RHS = [0]*r;
-    RHS[0]=a;
-    RHS[n%r]=1;
+    LHS[0]-=a;
+    LHS[n%r]-=1;
     for i in range(r):
-        if LHS[i]!=RHS[i] :
+        if LHS[i]!=0 :
              return True;
     return False;
 
@@ -196,7 +193,7 @@ def aks(n,fast=False):
 
     if r==False :
         return False
-    if r==n :# step 2
+    if r>= math.sqrt(n):# step 2
         return True;
     
     end=min(math.ceil(math.sqrt(r))*(n.bit_length()+1),n);
@@ -205,6 +202,7 @@ def aks(n,fast=False):
             return False
         if checkWitness(a,n,r,fast) :
             return False
+        
     return True;
 
 
@@ -214,10 +212,10 @@ n=1;
 #     a=1;
 #     r=int(input());
 #     print(polypow(a,n,r,100,True));
-end=100
+end=2900
 start_time = time.time()
 for i in range(1,end):
-    withAks=aks(i);
+    withAks=aks(i,False);
     withSympy=isprime(i);
     if i%100==0 :
         print(i)
@@ -225,12 +223,13 @@ for i in range(1,end):
         print('come on something is wrong slow')
 print("--- %s seconds ---" % (time.time() - start_time))
 
-# start_time = time.time()
-# for i in range(37,end):
-#     withAks=aks(i,True);
-#     withSympy=isprime(i);
-#     if i%100==0 :
-#         print(i)
-#     if withAks!=withSympy:
-#         print('come on something is wrong Fast')
-# print("Fast--- %s seconds ---" % (time.time() - start_time))
+start_time = time.time()
+for i in range(1,end):
+#    start_time = time.time()
+    withAks=aks(i,True);
+    withSympy=isprime(i);
+    if i%100==0 :
+        print(i)
+    if withAks!=withSympy:
+        print('come on something is wrong Fast')
+print("Fast--- %s seconds ---" % (time.time() - start_time),i)
